@@ -1,5 +1,4 @@
-pyautogui
-pyvirtualdisplay
+flask
 opencv-python
 mediapipe
-flask
+numpy
