@@ -1,6 +1,5 @@
-flask
-opencv-python
-mediapipe
 pyautogui
 pyvirtualdisplay
-gunicorn
+opencv-python
+mediapipe
+flask
