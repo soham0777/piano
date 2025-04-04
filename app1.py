@@ -1,13 +1,13 @@
 import os
 import cv2
 import time
+import numpy as np
 import mediapipe as mp
 import pyautogui
-from flask import Flask, jsonify
-
-# Virtual Display Setup (Required for Render)
-os.environ["DISPLAY"] = ":99"
+from flask import Flask, request, jsonify
 from pyvirtualdisplay import Display
+
+# Start Virtual Display (Required for Render)
 display = Display(visible=0, size=(1024, 768))
 display.start()
 
@@ -18,31 +18,29 @@ app = Flask(__name__)
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(max_num_hands=1, min_detection_confidence=0.7)
 
-# Initialize webcam
-cap = cv2.VideoCapture(0)
-
 def count_fingers(hand_landmarks):
-    """Count the number of extended fingers"""
+    """Count the number of extended fingers."""
     finger_tips = [8, 12, 16, 20]  # Index, Middle, Ring, Pinky
-    extended_fingers = 0
-
-    for tip in finger_tips:
-        if hand_landmarks.landmark[tip].y < hand_landmarks.landmark[tip - 2].y:
-            extended_fingers += 1
-
+    extended_fingers = sum(
+        hand_landmarks.landmark[tip].y < hand_landmarks.landmark[tip - 2].y
+        for tip in finger_tips
+    )
     return extended_fingers
 
-@app.route('/detect', methods=['GET'])
+@app.route('/detect', methods=['POST'])
 def detect_gesture():
-    """Detect hand gestures and return action"""
-    ret, frame = cap.read()
-    if not ret:
-        return jsonify({"error": "Failed to read from webcam"}), 500
+    """Detect hand gestures from an uploaded image."""
+    if 'image' not in request.files:
+        return jsonify({"error": "No image file uploaded"}), 400
 
-    # Flip frame for selfie view
-    frame = cv2.flip(frame, 1)
+    file = request.files['image']
+    img_np = np.frombuffer(file.read(), np.uint8)
+    frame = cv2.imdecode(img_np, cv2.IMREAD_COLOR)
 
-    # Convert to RGB and process with Mediapipe
+    if frame is None:
+        return jsonify({"error": "Invalid image format"}), 400
+
+    # Convert image to RGB
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     result = hands.process(rgb_frame)
 
